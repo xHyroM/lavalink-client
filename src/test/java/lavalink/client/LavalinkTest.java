@@ -16,7 +16,7 @@ import lavalink.client.player.event.PlayerEventListenerAdapter;
 import net.dv8tion.jda.api.AccountType;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.entities.VoiceChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.jupiter.api.AfterAll;
@@ -60,8 +60,7 @@ class LavalinkTest {
 
     @BeforeAll
     static void setUp() throws Exception {
-        JDABuilder jdaBuilder = new JDABuilder(AccountType.BOT)
-                .setToken(getSystemProperty(PROPERTY_TOKEN));
+        JDABuilder jdaBuilder = JDABuilder.createDefault(getSystemProperty(PROPERTY_TOKEN));
 
         JDA selfId = jdaBuilder.build();
         lavalink = new JdaLavalink(selfId.retrieveApplicationInfo().submit().get(30, TimeUnit.SECONDS).getId(), 1, integer -> jda);
@@ -90,7 +89,7 @@ class LavalinkTest {
 
     @Test
     void vcJoinTest() {
-        VoiceChannel vc = fetchVoiceChannel(jda, getTestVoiceChannelId());
+        AudioChannel vc = fetchVoiceChannel(jda, getTestVoiceChannelId());
         ensureConnected(lavalink, vc);
         assertEquals(Link.State.CONNECTED, lavalink.getLink(vc.getGuild()).getState(), "Failed to connect to voice channel");
         ensureNotConnected(lavalink, vc);
@@ -120,7 +119,7 @@ class LavalinkTest {
     }
 
     private void connectAndPlay(AudioTrack track) throws InterruptedException {
-        VoiceChannel vc = fetchVoiceChannel(jda, getTestVoiceChannelId());
+        AudioChannel vc = fetchVoiceChannel(jda, getTestVoiceChannelId());
         ensureConnected(lavalink, vc);
 
         IPlayer player = lavalink.getLink(vc.getGuild()).getPlayer();
@@ -155,7 +154,7 @@ class LavalinkTest {
 
     @Test
     void stopTest() throws InterruptedException {
-        VoiceChannel vc = fetchVoiceChannel(jda, getTestVoiceChannelId());
+        AudioChannel vc = fetchVoiceChannel(jda, getTestVoiceChannelId());
         ensureConnected(lavalink, vc);
 
         IPlayer player = lavalink.getLink(vc.getGuild()).getPlayer();
@@ -189,7 +188,7 @@ class LavalinkTest {
 
     @Test
     void testPlayback() throws InterruptedException {
-        VoiceChannel vc = fetchVoiceChannel(jda, getTestVoiceChannelId());
+        AudioChannel vc = fetchVoiceChannel(jda, getTestVoiceChannelId());
         Link link = lavalink.getLink(vc.getGuild());
         ensureConnected(lavalink, vc);
 
@@ -234,7 +233,7 @@ class LavalinkTest {
         return Long.parseUnsignedLong(getSystemProperty(PROPERTY_CHANNEL));
     }
 
-    private static VoiceChannel fetchVoiceChannel(JDA jda, long voiceChannelId) {
+    private static AudioChannel fetchVoiceChannel(JDA jda, long voiceChannelId) {
         long started = System.currentTimeMillis();
         while (jda.getStatus() != JDA.Status.CONNECTED
                 && System.currentTimeMillis() - started < 10000 //wait 10 sec max
@@ -247,14 +246,14 @@ class LavalinkTest {
         }
         assertEquals(JDA.Status.CONNECTED, jda.getStatus(), "Failed to connect to Discord in a reasonable amount of time");
 
-        VoiceChannel voiceChannel = jda.getVoiceChannelById(voiceChannelId);
+        AudioChannel voiceChannel = jda.getVoiceChannelById(voiceChannelId);
         assertNotNull(voiceChannel, "Configured VoiceChannel not found on the configured Discord bot account");
 
         return voiceChannel;
     }
 
 
-    private static void ensureConnected(JdaLavalink lavalink, VoiceChannel voiceChannel) {
+    private static void ensureConnected(JdaLavalink lavalink, AudioChannel voiceChannel) {
         JdaLink link = lavalink.getLink(voiceChannel.getGuild());
         link.connect(voiceChannel);
         long started = System.currentTimeMillis();
@@ -272,7 +271,7 @@ class LavalinkTest {
         assertEquals(Link.State.CONNECTED, link.getState(), "Failed to connect to voice channel in a reasonable amount of time");
     }
 
-    private static void ensureNotConnected(JdaLavalink lavalink, VoiceChannel voiceChannel) {
+    private static void ensureNotConnected(JdaLavalink lavalink, AudioChannel voiceChannel) {
         Link link = lavalink.getLink(voiceChannel.getGuild());
         link.disconnect();
         long started = System.currentTimeMillis();
