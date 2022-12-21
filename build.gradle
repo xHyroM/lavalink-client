@@ -21,6 +21,7 @@ plugins {
 apply plugin: 'idea'
 apply plugin: 'java'
 apply plugin: 'java-library'
+apply plugin: 'signing'
 apply plugin: 'maven-publish'
 apply plugin: 'org.ajoberstar.grgit'
 apply plugin: 'jacoco'
@@ -30,11 +31,6 @@ apply plugin: 'org.sonarqube'
 group = 'com.fredboat.lavalink.client'
 version = "${versionFromTag()}"
 description = 'JDA based client for the Lavalink-Server'
-
-
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
-
 
 repositories {
     jcenter()
@@ -102,7 +98,6 @@ build {
     }
 }
 
-
 test {
     useJUnitPlatform()
 
@@ -123,7 +118,9 @@ sonarqube {
 
 jar.mustRunAfter clean
 publishToMavenLocal.dependsOn jar
+
 // called by jitpack
+
 task install {
     dependsOn test
     dependsOn publishToMavenLocal
@@ -131,35 +128,36 @@ task install {
         println 'Version: ' + version
     }
 }
+
 task sourceJar(type: Jar) {
     from sourceSets.main.allJava
     classifier 'sources'
 }
 
+java {
+    toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+}
 
 publishing {
     publications {
-        mavenJava(MavenPublication) {
-            from components.java
-            artifact sourceJar
-            groupId project.group
-            artifactId project.name
-            version project.version
+        maven(MavenPublication) {
+            artifact(tasks["shadowJar"])
+
+            repositories.maven {
+                url = uri("https://repo.jopga.me/releases")
+
+                credentials(PasswordCredentials)
+                authentication {
+                    basic(BasicAuthentication)
+                }
+            }
+
+            groupId = rootProject.group as String
+            artifactId = project.name
+            version = rootProject.version as String
 
             pom {
-                name = project.name
-                description = project.description
-                url = 'https://github.com/FredBoat/Lavalink-Client'
-                licenses {
-                    license {
-                        name = 'MIT'
-                        url = 'https://choosealicense.com/licenses/mit/'
-                        distribution = 'repo'
-                    }
-                }
-                scm {
-                    url = 'https://github.com/FredBoat/Lavalink-Client'
-                }
+                name.set("Lavalink-Client")
             }
         }
     }
