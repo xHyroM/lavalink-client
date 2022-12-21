@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Freya Arbjerg. Licensed under the MIT license
+ */
+
 package lavalink.client.io.jda;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
@@ -9,7 +13,8 @@ import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.GuildVoiceState;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.VoiceChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,8 +29,8 @@ public class JdaLink extends Link {
         this.lavalink = lavalink;
     }
 
-    public void connect(@NonNull VoiceChannel voiceChannel) {
-        connect(voiceChannel, true);
+    public void connect(@NonNull AudioChannel audioChannel) {
+        connect(audioChannel, true);
     }
 
     /**
@@ -34,10 +39,10 @@ public class JdaLink extends Link {
      * @param channel Channel to connect to
      */
     @SuppressWarnings("WeakerAccess")
-    void connect(@NonNull VoiceChannel channel, boolean checkChannel) {
+    void connect(@NonNull AudioChannel channel, boolean checkChannel) {
         if (!channel.getGuild().equals(getJda().getGuildById(guild)))
-            throw new IllegalArgumentException("The provided VoiceChannel is not a part of the Guild that this AudioManager handles." +
-                    "Please provide a VoiceChannel from the proper Guild");
+            throw new IllegalArgumentException("The provided AudioChannel is not a part of the Guild that this AudioManager handles." +
+                    "Please provide an AudioChannel from the proper Guild");
         if (channel.getJDA().isUnavailable(channel.getGuild().getIdLong()))
             throw new GuildUnavailableException("Cannot open an Audio Connection with an unavailable guild. " +
                     "Please wait until this Guild is available to open a connection.");
@@ -52,8 +57,14 @@ public class JdaLink extends Link {
         if (checkChannel && channel.equals(voiceState.getChannel()))
             return;
 
-        if (voiceState.inVoiceChannel()) {
-            final int userLimit = channel.getUserLimit(); // userLimit is 0 if no limit is set!
+        if (voiceState.inAudioChannel()) {
+            int userLimit = 0; // userLimit is 0 if no limit is set!
+
+            if (channel instanceof VoiceChannel) {
+                VoiceChannel vc = (VoiceChannel) channel;
+                userLimit = vc.getUserLimit();
+            }
+
             if (!self.isOwner() && !self.hasPermission(Permission.ADMINISTRATOR)) {
                 if (userLimit > 0                                                      // If there is a userlimit
                         && userLimit <= channel.getMembers().size()                    // if that userlimit is reached

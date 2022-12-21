@@ -1,23 +1,5 @@
 /*
- * Copyright (c) 2017 Frederik Ar. Mikkelsen & NoobLance
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * Copyright (c) Freya Arbjerg. Licensed under the MIT license
  */
 
 package lavalink.client;
@@ -26,8 +8,6 @@ import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
-import lavalink.client.io.Lavalink;
-import lavalink.client.io.LavalinkSocket;
 import lavalink.client.io.Link;
 import lavalink.client.io.jda.JdaLavalink;
 import lavalink.client.io.jda.JdaLink;
@@ -36,7 +16,7 @@ import lavalink.client.player.event.PlayerEventListenerAdapter;
 import net.dv8tion.jda.api.AccountType;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.entities.VoiceChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.jupiter.api.AfterAll;
@@ -53,10 +33,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @RequireSystemProperty({
         LavalinkTest.PROPERTY_TOKEN,
@@ -83,8 +60,7 @@ class LavalinkTest {
 
     @BeforeAll
     static void setUp() throws Exception {
-        JDABuilder jdaBuilder = new JDABuilder(AccountType.BOT)
-                .setToken(getSystemProperty(PROPERTY_TOKEN));
+        JDABuilder jdaBuilder = JDABuilder.createDefault(getSystemProperty(PROPERTY_TOKEN));
 
         JDA selfId = jdaBuilder.build();
         lavalink = new JdaLavalink(selfId.retrieveApplicationInfo().submit().get(30, TimeUnit.SECONDS).getId(), 1, integer -> jda);
@@ -113,7 +89,7 @@ class LavalinkTest {
 
     @Test
     void vcJoinTest() {
-        VoiceChannel vc = fetchVoiceChannel(jda, getTestVoiceChannelId());
+        AudioChannel vc = fetchVoiceChannel(jda, getTestVoiceChannelId());
         ensureConnected(lavalink, vc);
         assertEquals(Link.State.CONNECTED, lavalink.getLink(vc.getGuild()).getState(), "Failed to connect to voice channel");
         ensureNotConnected(lavalink, vc);
@@ -130,7 +106,7 @@ class LavalinkTest {
             ArrayList<AudioTrack> list = new ArrayList<>();
             trackData.forEach(o -> {
                 try {
-                    list.add(LavalinkUtil.toAudioTrack(((JSONObject) o).getString("track")));
+                    list.add(LavalinkUtil.toAudioTrack(lavalink.getAudioPlayerManager(), ((JSONObject) o).getString("track")));
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -143,7 +119,7 @@ class LavalinkTest {
     }
 
     private void connectAndPlay(AudioTrack track) throws InterruptedException {
-        VoiceChannel vc = fetchVoiceChannel(jda, getTestVoiceChannelId());
+        AudioChannel vc = fetchVoiceChannel(jda, getTestVoiceChannelId());
         ensureConnected(lavalink, vc);
 
         IPlayer player = lavalink.getLink(vc.getGuild()).getPlayer();
@@ -178,7 +154,7 @@ class LavalinkTest {
 
     @Test
     void stopTest() throws InterruptedException {
-        VoiceChannel vc = fetchVoiceChannel(jda, getTestVoiceChannelId());
+        AudioChannel vc = fetchVoiceChannel(jda, getTestVoiceChannelId());
         ensureConnected(lavalink, vc);
 
         IPlayer player = lavalink.getLink(vc.getGuild()).getPlayer();
@@ -212,7 +188,7 @@ class LavalinkTest {
 
     @Test
     void testPlayback() throws InterruptedException {
-        VoiceChannel vc = fetchVoiceChannel(jda, getTestVoiceChannelId());
+        AudioChannel vc = fetchVoiceChannel(jda, getTestVoiceChannelId());
         Link link = lavalink.getLink(vc.getGuild());
         ensureConnected(lavalink, vc);
 
@@ -257,7 +233,7 @@ class LavalinkTest {
         return Long.parseUnsignedLong(getSystemProperty(PROPERTY_CHANNEL));
     }
 
-    private static VoiceChannel fetchVoiceChannel(JDA jda, long voiceChannelId) {
+    private static AudioChannel fetchVoiceChannel(JDA jda, long voiceChannelId) {
         long started = System.currentTimeMillis();
         while (jda.getStatus() != JDA.Status.CONNECTED
                 && System.currentTimeMillis() - started < 10000 //wait 10 sec max
@@ -270,14 +246,14 @@ class LavalinkTest {
         }
         assertEquals(JDA.Status.CONNECTED, jda.getStatus(), "Failed to connect to Discord in a reasonable amount of time");
 
-        VoiceChannel voiceChannel = jda.getVoiceChannelById(voiceChannelId);
+        AudioChannel voiceChannel = jda.getVoiceChannelById(voiceChannelId);
         assertNotNull(voiceChannel, "Configured VoiceChannel not found on the configured Discord bot account");
 
         return voiceChannel;
     }
 
 
-    private static void ensureConnected(JdaLavalink lavalink, VoiceChannel voiceChannel) {
+    private static void ensureConnected(JdaLavalink lavalink, AudioChannel voiceChannel) {
         JdaLink link = lavalink.getLink(voiceChannel.getGuild());
         link.connect(voiceChannel);
         long started = System.currentTimeMillis();
@@ -295,7 +271,7 @@ class LavalinkTest {
         assertEquals(Link.State.CONNECTED, link.getState(), "Failed to connect to voice channel in a reasonable amount of time");
     }
 
-    private static void ensureNotConnected(JdaLavalink lavalink, VoiceChannel voiceChannel) {
+    private static void ensureNotConnected(JdaLavalink lavalink, AudioChannel voiceChannel) {
         Link link = lavalink.getLink(voiceChannel.getGuild());
         link.disconnect();
         long started = System.currentTimeMillis();
