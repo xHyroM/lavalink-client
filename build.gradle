@@ -139,25 +139,26 @@ java {
 }
 
 publishing {
+    repositories {
+        maven {
+            url = uri("https://repo.jopga.me/releases")
+            credentials(PasswordCredentials)
+            authentication {
+                basic(BasicAuthentication)
+            }
+        }
+    }
     publications {
         maven(MavenPublication) {
-            artifact(tasks["shadowJar"])
-
-            repositories.maven {
-                url = uri("https://repo.jopga.me/releases")
-
-                credentials(PasswordCredentials)
-                authentication {
-                    basic(BasicAuthentication)
-                }
-            }
+//            artifact(tasks["shadowJar"])
 
             groupId = rootProject.group as String
             artifactId = project.name
             version = rootProject.version as String
 
+            from components.java
             pom {
-                name.set("Lavalink-Client")
+                name = "Lavalink-Client"
             }
         }
     }
