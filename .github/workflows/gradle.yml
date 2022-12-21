@@ -9,10 +9,14 @@ name: Java CI with Gradle
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "master" ]
   workflow_dispatch:
+    inputs:
+      release:
+        type: boolean
+        description: Release build to reposilite
 
 jobs:
   build:
@@ -26,6 +30,10 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
       - name: Build with Gradle
         uses: gradle/gradle-build-action@7b3886699e7f5156c2650e6861b32ea2356df4d6
         with:
@@ -61,4 +69,4 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            build/libs/Lavalink-*.jar
+            build/libs/mumblum-*.jar
